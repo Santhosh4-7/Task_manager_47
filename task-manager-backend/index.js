@@ -1,205 +1,218 @@
+//
+
 const express = require('express');
 const mongoose = require('mongoose');
-const TaskManager = require('./models/user');
 const cors = require('cors');
-const app = express();
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
+const User = require('./models/user');
+
+const app = express();
+
+// Middleware setup
 app.use(cors());
 app.use(express.json());
 
+// MongoDB connection
 const dbURI = 'mongodb://localhost:27017/Taskmanager';
+mongoose.connect(dbURI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  console.log('MongoDB connected successfully');
+}).catch((err) => {
+  console.error('Database connection failed:', err);
+});
 
-mongoose.connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('Connected to MongoDB!'))
-  .catch((error) => console.error('Error connecting to MongoDB:', error));
-
+// Basic route check
 app.get('/', (req, res) => {
-  res.send('Task Manager Backend Running');
+  res.send('Task Manager Backend Active');
 });
 
-bcrypt.hash('mypassword', 10, function(err, hash) {
-  if (err) { throw (err); }
-  bcrypt.compare('mypassword', hash, function(err, result) {
-    if (err) { throw (err); }
-    console.log(result);
-  });
-});
+// Constants
+const JWT_SECRET = process.env.JWT_SECRET || 'default_dev_secret';
 
-const JWT_SECRET = '123';
+// Utility for legacy hashing (not used in main flow)
+const hashPassword = (pwd) => crypto.createHash('sha256').update(pwd).digest('hex');
 
-function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
-
+// User registration
 app.post('/register', async (req, res) => {
   const { email, password } = req.body;
+
   try {
-    const emailRegex = /\S+@\S+\.\S+/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: 'Please provide a valid email address' });
+    const emailPattern = /\S+@\S+\.\S+/;
+    if (!emailPattern.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
     }
 
-    const existingUser = await TaskManager.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ message: 'Account already exists' });
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+      return res.status(400).json({ message: 'Password too short' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new TaskManager({ email, password: hashedPassword });
-    await newUser.save();
+    const securePassword = await bcrypt.hash(password, 10);
+    const newAccount = new User({ email, password: securePassword });
+    await newAccount.save();
 
-    const token = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: newAccount._id }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
-      message: 'User registered successfully',
+      message: 'Registration complete',
       token,
       user: {
-        id: newUser._id,
-        email: newUser.email
-      }
+        id: newAccount._id,
+        email: newAccount.email,
+      },
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error during registration' });
+    console.error('Registration error:', err);
+    res.status(500).json({ message: 'Internal server error during registration' });
   }
 });
 
+// User login
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
+
   try {
-    const user = await TaskManager.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: 'User not found', errorType: 'UserNotFound' });
+    const account = await User.findOne({ email });
+    if (!account) {
+      return res.status(400).json({ message: 'Account not found', errorType: 'UserNotFound' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials', errorType: 'WrongPassword' });
+    const validPassword = await bcrypt.compare(password, account.password);
+    if (!validPassword) {
+      return res.status(400).json({ message: 'Incorrect credentials', errorType: 'WrongPassword' });
     }
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: account._id }, JWT_SECRET, { expiresIn: '7d' });
 
     res.status(200).json({
       message: 'Login successful',
       token,
       user: {
-        id: user._id,
-        email: user.email
-      }
+        id: account._id,
+        email: account.email,
+      },
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error during login', error: err.message });
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Internal server error during login' });
   }
 });
 
+// Get tasks
 app.get('/tasks', async (req, res) => {
   const { email } = req.query;
+
   try {
-    const user = await TaskManager.findOne({ email });
-    if (!user) {
+    const account = await User.findOne({ email });
+    if (!account) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json(user.tasks);
-  } catch (error) {
-    console.error('Error fetching tasks:', error);
-    res.status(500).json({ message: 'Error fetching tasks' });
+    res.json(account.tasks);
+  } catch (err) {
+    console.error('Error retrieving tasks:', err);
+    res.status(500).json({ message: 'Failed to retrieve tasks' });
   }
 });
 
+// add a new task
 app.post('/tasks', async (req, res) => {
   const { title, completed, email, description, priority } = req.body;
+
   if (!email || !title || !priority) {
-    return res.status(400).json({ error: 'Email, title, and priority are required' });
+    return res.status(400).json({ error: 'Missing required fields: email, title, priority' });
   }
 
   try {
-    const user = await TaskManager.findOne({ email });
-    if (!user) {
+    const account = await User.findOne({ email });
+    if (!account) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const newTask = {
+    const task = {
       title,
       completed,
       description,
       priority,
-      createdAt: new Date()
+      createdAt: new Date(),
     };
 
-    user.tasks.push(newTask);
-    await user.save();
-    res.status(201).json(newTask);
-  } catch (error) {
-    console.error('Error saving task:', error);
-    res.status(500).json({ error: error.message });
+    account.tasks.push(task);
+    await account.save();
+
+    res.status(201).json(task);
+  } catch (err) {
+    console.error('Error adding task:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
+// task updation
 app.put('/tasks/:taskId', async (req, res) => {
-  console.log("HEllo")
   const { taskId } = req.params;
   const { email } = req.body;
-  let status = "complete";
+  const updatedStatus = 'complete';
+
   try {
-    const updatedUser = await TaskManager.findOneAndUpdate(
+    const updatedAccount = await User.findOneAndUpdate(
       { email, 'tasks._id': taskId },
-      { $set: { 'tasks.$.status': status } },
+      { $set: { 'tasks.$.status': updatedStatus } },
       { new: true }
     );
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: 'User or Task not found' });
+    if (!updatedAccount) {
+      return res.status(404).json({ message: 'Task or user not found' });
     }
 
-    const updatedTask = updatedUser.tasks.find(task => task._id.toString() === taskId);
-    console.log("upt" + updatedTask);
-    res.status(200).json({ message: 'Task status updated', updatedTask });
+    const task = updatedAccount.tasks.find(t => t._id.toString() === taskId);
+    res.status(200).json({ message: 'Task updated', updatedTask: task });
   } catch (err) {
     console.error('Error updating task:', err);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
 
+// task deletion
 app.delete('/tasks/:taskId', async (req, res) => {
-  console.log("Delete Task Called");
   const { taskId } = req.params;
   const { email } = req.body;
 
   try {
-    const updatedUser = await TaskManager.findOneAndUpdate(
+    const updatedAccount = await User.findOneAndUpdate(
       { email },
       { $pull: { tasks: { _id: taskId } } },
       { new: true }
     );
 
-    if (!updatedUser) {
+    if (!updatedAccount) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const deletedTask = !updatedUser.tasks.some(task => task._id.toString() === taskId);
-
-    if (deletedTask) {
-      res.status(200).json({ message: 'Task deleted successfully' });
-    } else {
-      res.status(404).json({ message: 'Task not found' });
+    const wasDeleted = !updatedAccount.tasks.some(t => t._id.toString() === taskId);
+    if (wasDeleted) {
+      return res.status(200).json({ message: 'Task removed' });
     }
 
+    res.status(404).json({ message: 'Task not found' });
   } catch (err) {
-    console.error('Error deleting task:', err);
+    console.error('Task deletion error:', err);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
 
-const port = 5000;
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+// server code
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server is live at http://localhost:${PORT}`);
 });
-               
+
+
+
