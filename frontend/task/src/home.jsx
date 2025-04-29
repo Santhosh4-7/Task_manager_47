@@ -1,162 +1,158 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import './home.modules.css'; // Updated CSS import
+import './home.modules.css';
 import { useLocation } from 'react-router-dom';
 
 function Home() {
-  const [allTasks, setAllTasks] = useState([]); // Store ALL tasks
-  const [tasks, setTasks] = useState([]); // Tasks currently displayed
-  const [newTask, setNewTask] = useState('');
-  const [taskDescription, setTaskDescription] = useState('');
-  const [taskPriority, setTaskPriority] = useState('Low');
-  const [message, setMessage] = useState('');
+  const [taskList, setTaskList] = useState([]);
+  const [filteredTasks, setFilteredTasks] = useState([]);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [priority, setPriority] = useState('Low');
+  const [msg, setMsg] = useState('');
   const location = useLocation();
   const { email } = location.state || {};
 
-  const fetchTasks = async () => {
+  // Get tasks from server
+  const loadTasks = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/tasks', {
-        params: { email }
+      const res = await axios.get('http://localhost:5000/tasks', {
+        params: { email },
       });
-      setAllTasks(response.data); // Save full list
-      setTasks(response.data); // Also show all tasks initially
-    } catch (error) {
-      setMessage('Error fetching tasks');
+      setTaskList(res.data);
+      setFilteredTasks(res.data);
+    } catch (err) {
+      console.error('Could not fetch tasks:', err);
+      setMsg('Failed to load tasks');
     }
   };
 
-  const addTask = async (e) => {
+  // Add a task
+  const handleAddTask = async (e) => {
     e.preventDefault();
-    if (!newTask || !taskDescription) {
-      setMessage('Both title and description are required');
+    if (!newTitle.trim() || !newDesc.trim()) {
+      setMsg('Title and description required');
       return;
     }
 
     try {
       await axios.post('http://localhost:5000/tasks', {
-        title: newTask,
+        title: newTitle,
+        description: newDesc,
+        priority,
         completed: false,
         email,
-        description: taskDescription,
-        priority: taskPriority,
       });
-      setMessage('Task added successfully');
-      setNewTask('');
-      setTaskDescription('');
-      setTaskPriority('Low');
-      fetchTasks(); // Refresh full list
-    } catch (error) {
-      setMessage('Error adding task');
+      setMsg('Task added!');
+      setNewTitle('');
+      setNewDesc('');
+      setPriority('Low');
+      loadTasks();
+    } catch (err) {
+      console.error('Add error:', err);
+      setMsg('Could not add task');
     }
   };
 
-  const toggleComplete = async (taskId) => {
+  // Mark task as complete
+  const completeTask = async (id) => {
     try {
-      await axios.put(
-        `http://localhost:5000/tasks/${taskId}`,
-        { email, completed: true }
-      );
-      fetchTasks();
-    } catch (error) {
-      setMessage('Error updating task status');
+      await axios.put(`http://localhost:5000/tasks/${id}`, {
+        completed: true,
+        email,
+      });
+      loadTasks();
+    } catch (err) {
+      console.warn('Completion failed');
+      setMsg('Failed to update task');
     }
   };
 
-  const deleteTask = async (taskId) => {
+  // Delete a task
+  const removeTask = async (id) => {
     try {
-      await axios.delete(
-        `http://localhost:5000/tasks/${taskId}`,
-        { data: { email } }
-      );
-      fetchTasks();
-    } catch (error) {
-      setMessage('Error deleting task');
+      await axios.delete(`http://localhost:5000/tasks/${id}`, {
+        data: { email },
+      });
+      loadTasks();
+    } catch (err) {
+      setMsg('Error deleting');
     }
   };
 
-  const showCompletedTasks = () => {
-    const completedTasks = allTasks.filter((task) => task.status === 'complete');
-    setTasks(completedTasks);
+  // Filters
+  const showCompleted = () => {
+    setFilteredTasks(taskList.filter((t) => t.status === 'complete'));
   };
 
-  const showActiveTasks = () => {
-    const activeTasks = allTasks.filter((task) => task.status === 'incomplete');
-    setTasks(activeTasks);
+  const showActive = () => {
+    setFilteredTasks(taskList.filter((t) => t.status === 'incomplete'));
   };
 
-  const showAllTasks = () => {
-    setTasks(allTasks); // Just reset to full list
+  const showAll = () => {
+    setFilteredTasks(taskList);
   };
 
-  const sortTasksByPriority = (tasks) => {
-    const priorityOrder = ['High', 'Medium', 'Low'];
-    return tasks.slice().sort((a, b) => priorityOrder.indexOf(a.priority) - priorityOrder.indexOf(b.priority));
+  // Simple sorting
+  const sortByPriority = (items) => {
+    const order = ['High', 'Medium', 'Low'];
+    return [...items].sort((a, b) => order.indexOf(a.priority) - order.indexOf(b.priority));
   };
 
   useEffect(() => {
     if (email) {
-      fetchTasks();
+      loadTasks();
     }
   }, [email]);
 
-  const sortedTasks = sortTasksByPriority(tasks);
+  const displayTasks = sortByPriority(filteredTasks);
 
   return (
     <div className="task-home-container">
-      <h2>Your Tasks</h2>
+      <h2>Welcome! Here are your tasks:</h2>
 
       <div className="task-filter">
-        <button onClick={showAllTasks}>All</button>
-        <button onClick={showActiveTasks}>Active</button>
-        <button onClick={showCompletedTasks}>Completed</button>
+        <button onClick={showAll}>All</button>
+        <button onClick={showActive}>Active</button>
+        <button onClick={showCompleted}>Completed</button>
       </div>
 
-      <form onSubmit={addTask} className="task-form">
-        <input 
-          type="text" 
-          placeholder="Add a new task" 
-          value={newTask} 
-          onChange={(e) => setNewTask(e.target.value)}
+      <form onSubmit={handleAddTask} className="task-form">
+        <input
+          type="text"
+          placeholder="Task title"
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
         />
         <textarea
-          placeholder="Add a task description"
-          value={taskDescription}
-          onChange={(e) => setTaskDescription(e.target.value)}
+          placeholder="Description"
+          value={newDesc}
+          onChange={(e) => setNewDesc(e.target.value)}
         />
-        <select value={taskPriority} onChange={(e) => setTaskPriority(e.target.value)}>
+        <select value={priority} onChange={(e) => setPriority(e.target.value)}>
           <option value="Low">Low</option>
           <option value="Medium">Medium</option>
           <option value="High">High</option>
         </select>
-        <button type="submit">Add Task</button>
+        <button type="submit">Add</button>
       </form>
 
-      {message && <p className="task-message">{message}</p>}
+      {msg && <p className="task-message">{msg}</p>}
 
       <ul className="task-list">
-        {sortedTasks.map((task) => (
+        {displayTasks.map((task) => (
           <li key={task._id} className={`task-item ${task.status === 'complete' ? 'completed' : ''}`}>
             <div className="task-header">
-              {task.status === 'complete' ? (
-                <h3><s>{task.title}</s></h3>
-              ) : (
-                <h3>{task.title}</h3>
-              )}
-              <span className={`status ${task.status === 'complete' ? 'completed' : 'active'}`}>
-                {task.status === 'complete' ? 'Completed' : 'Active'}
-              </span>
+              <h3>{task.status === 'complete' ? <s>{task.title}</s> : task.title}</h3>
+              <span className={`status ${task.status}`}>{task.status}</span>
               <span className="priority">{task.priority}</span>
             </div>
-            {task.status === 'complete' ? (
-              <p><s>{task.description}</s></p>
-            ) : (
-              <p>{task.description}</p>
-            )}
+            <p>{task.status === 'complete' ? <s>{task.description}</s> : task.description}</p>
             <div className="task-actions">
               {task.status === 'incomplete' && (
-                <button onClick={() => toggleComplete(task._id)}>Mark as Complete</button>
+                <button onClick={() => completeTask(task._id)}>Complete</button>
               )}
-              <button onClick={() => deleteTask(task._id)}>Delete</button>
+              <button onClick={() => removeTask(task._id)}>Delete</button>
             </div>
           </li>
         ))}
@@ -166,3 +162,4 @@ function Home() {
 }
 
 export default Home;
+        
