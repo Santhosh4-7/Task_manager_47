@@ -7,18 +7,26 @@ SETUP INSTRUCTIONS
 git clone https://github.com/Santhosh4-7/Task_manager_47.git
 
 
+
+DATABASE--MONGODB
+make sure you connect the database with the backend using the connection string.
+
 BACKEND --
 
 cd task-manager-backend
-npm install
+node index
+server
 
-FRONTEND --
 
-cd frontend 
-npx install reactapp
+FRONTEND ---------------------------
 
-cd to_directory and npm start
+cd frontenx
+npx install react #yourappname
 
+copy the src files from frontend/task/src i.e. App,Login,Register  and paste it in the src folder of your react app.
+
+cd to_directory_of_your_app and npm start
+------------------------------------
 PORT AND KEY_INFO
 PORT=5000
 MONGO_URI=mongodb://localhost:27017/taskmanagerdb  # or MongoDB Atlas URI if using cloud DB
