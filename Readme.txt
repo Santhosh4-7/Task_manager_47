@@ -15,8 +15,9 @@ MONGO_URI=mongodb://localhost:27017/taskmanagerdb
 BACKEND --
 
 cd task-manager-backend
-node index
-server
+node index 
+output-- server running  
+         true
 
 
 FRONTEND ---------------------------
