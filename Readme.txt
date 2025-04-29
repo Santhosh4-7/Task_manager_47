@@ -10,6 +10,7 @@ git clone https://github.com/Santhosh4-7/Task_manager_47.git
 
 DATABASE--MONGODB
 make sure you connect the database with the backend using the connection string.
+MONGO_URI=mongodb://localhost:27017/taskmanagerdb
 
 BACKEND --
 
