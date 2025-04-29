@@ -10,7 +10,7 @@ const LoginPage = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setErrorMessage(''); // reset error before new attempt
+    setErrorMessage(''); 
 
     const userData = { email, password };
 
@@ -28,10 +28,10 @@ const LoginPage = () => {
       if (response.ok) {
         const { email, token } = data.user;
 
-        // Save token
+        
         localStorage.setItem('token', token);
 
-        // Navigate to HomePage with email
+        
         navigate('/home', { state: { email } });
       } else {
         setErrorMessage(data.message || 'Login failed. Please try again.');
@@ -46,7 +46,7 @@ const LoginPage = () => {
     <div>
       <h2>Login</h2>
 
-      {/* Show error if any */}
+    
       {errorMessage && (
         <div style={{ color: 'red', marginBottom: '10px' }}>
           {errorMessage}
