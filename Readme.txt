@@ -12,6 +12,18 @@ DATABASE--MONGODB
 make sure you connect the database with the backend using the connection string.
 MONGO_URI=mongodb://localhost:27017/taskmanagerdb
 
+----------------------------
+Database user credentials--
+
+User{
+email-hello@gmail.com
+pw- 123abc
+
+email-mello@gmail.com
+pw-abcdefg
+}
+----------------------------
+
 BACKEND --
 
 cd task-manager-backend
