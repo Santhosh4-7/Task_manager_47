@@ -55,11 +55,23 @@ Technical Choice --- MERN STACK
 
 I used MERN Stack as it offers several advantages and its very easy to debug in MERN stack for me personally as I worked many projects in it.
 
-Features Implemented --
+Features Implemented -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Implemented all the features mentioned in the document
+         1.Register and log in with email/password
+         2.View their tasks
+         3.Add new tasks
+         4.Mark tasks as complete
+         5.Delete tasks
+         6.Filter tasks by status (All, Active, Completed).
+
 
 Secured Authorization -- Using Bcrypt JS a secured authorization has been performed 
 
+CustomHook -- Custom hook called useFetchtasks is implmented to fetch tasks , it makes refetch(after creation or deletion of task) job easy and it makes the code look more readable.
+
 MongoDb - Using MongoDb a suiting model was designed 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 MODEL--
 const mongoose = require('mongoose');
