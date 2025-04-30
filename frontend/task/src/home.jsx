@@ -2,36 +2,31 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './home.modules.css';
 import { useLocation } from 'react-router-dom';
+import useFetchTasks from './useFetchTasks';
 
 function Home() {
-  const [taskList, setTaskList] = useState([]);
+  const location = useLocation();
+  const { email } = location.state || {};
+
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [priority, setPriority] = useState('Low');
   const [msg, setMsg] = useState('');
-  const location = useLocation();
-  const { email } = location.state || {};
 
-  // Get tasks from server
-  const loadTasks = async () => {
-    try {
-      const res = await axios.get('http://localhost:5000/tasks', {
-        params: { email },
-      });
-      setTaskList(res.data);
-      setFilteredTasks(res.data);
-    } catch (err) {
-      console.error('Could not fetch tasks:', err);
-      setMsg('Failed to load tasks');
-    }
-  };
+  const { tasks, error, refetch } = useFetchTasks(email);
 
-  // Add a task
+  // Always update filtered tasks when main tasks list changes
+  useEffect(() => {
+    setFilteredTasks(tasks);
+  }, [tasks]);
+
+  // Handle new task submission
   const handleAddTask = async (e) => {
     e.preventDefault();
+
     if (!newTitle.trim() || !newDesc.trim()) {
-      setMsg('Title and description required');
+      setMsg('Please enter both title and description.');
       return;
     }
 
@@ -43,28 +38,29 @@ function Home() {
         completed: false,
         email,
       });
-      setMsg('Task added!');
+
+      setMsg('New task added!');
       setNewTitle('');
       setNewDesc('');
       setPriority('Low');
-      loadTasks();
+      await refetch(); // Refresh the task list
     } catch (err) {
-      console.error('Add error:', err);
-      setMsg('Could not add task');
+      console.error('Failed to add task:', err);
+      setMsg('Something went wrong while adding the task.');
     }
   };
 
-  // Mark task as complete
+  // Mark task as completed
   const completeTask = async (id) => {
     try {
       await axios.put(`http://localhost:5000/tasks/${id}`, {
         completed: true,
         email,
       });
-      loadTasks();
+      await refetch();
     } catch (err) {
-      console.warn('Completion failed');
-      setMsg('Failed to update task');
+      console.warn('Failed to mark task complete:', err);
+      setMsg('Could not complete the task.');
     }
   };
 
@@ -74,36 +70,33 @@ function Home() {
       await axios.delete(`http://localhost:5000/tasks/${id}`, {
         data: { email },
       });
-      loadTasks();
+      await refetch();
     } catch (err) {
-      setMsg('Error deleting');
+      console.error('Failed to delete task:', err);
+      setMsg('Could not delete the task.');
     }
   };
 
-  // Filters
+  // Filter button handlers
   const showCompleted = () => {
-    setFilteredTasks(taskList.filter((t) => t.status === 'complete'));
+    setFilteredTasks(tasks.filter((task) => task.status === 'complete'));
   };
 
   const showActive = () => {
-    setFilteredTasks(taskList.filter((t) => t.status === 'incomplete'));
+    setFilteredTasks(tasks.filter((task) => task.status === 'incomplete'));
   };
 
   const showAll = () => {
-    setFilteredTasks(taskList);
+    setFilteredTasks(tasks);
   };
 
-  // Simple sorting
-  const sortByPriority = (items) => {
-    const order = ['High', 'Medium', 'Low'];
-    return [...items].sort((a, b) => order.indexOf(a.priority) - order.indexOf(b.priority));
+  // Sort tasks by priority: High > Medium > Low
+  const sortByPriority = (list) => {
+    const priorityOrder = ['High', 'Medium', 'Low'];
+    return [...list].sort(
+      (a, b) => priorityOrder.indexOf(a.priority) - priorityOrder.indexOf(b.priority)
+    );
   };
-
-  useEffect(() => {
-    if (email) {
-      loadTasks();
-    }
-  }, [email]);
 
   const displayTasks = sortByPriority(filteredTasks);
 
@@ -134,20 +127,26 @@ function Home() {
           <option value="Medium">Medium</option>
           <option value="High">High</option>
         </select>
-        <button type="submit">Add</button>
+        <button type="submit">Add Task</button>
       </form>
 
       {msg && <p className="task-message">{msg}</p>}
+      {error && <p className="task-message error">{error}</p>}
 
       <ul className="task-list">
         {displayTasks.map((task) => (
-          <li key={task._id} className={`task-item ${task.status === 'complete' ? 'completed' : ''}`}>
+          <li
+            key={task._id}
+            className={`task-item ${task.status === 'complete' ? 'completed' : ''}`}
+          >
             <div className="task-header">
               <h3>{task.status === 'complete' ? <s>{task.title}</s> : task.title}</h3>
               <span className={`status ${task.status}`}>{task.status}</span>
               <span className="priority">{task.priority}</span>
             </div>
-            <p>{task.status === 'complete' ? <s>{task.description}</s> : task.description}</p>
+            <p>
+              {task.status === 'complete' ? <s>{task.description}</s> : task.description}
+            </p>
             <div className="task-actions">
               {task.status === 'incomplete' && (
                 <button onClick={() => completeTask(task._id)}>Complete</button>
@@ -162,4 +161,3 @@ function Home() {
 }
 
 export default Home;
-        
