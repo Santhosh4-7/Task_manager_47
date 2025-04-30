@@ -7,7 +7,7 @@ function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
-  const [errors, setErrors] = useState({}); // Store validation errors here
+  const [errors, setErrors] = useState({});
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
@@ -18,7 +18,7 @@ function Register() {
       // Redirect to login page after successful registration
       setTimeout(() => {
         navigate('/login');
-      }, 2000); // Wait for 2 seconds before redirecting
+      }, 2000);
     } catch (err) {
       // Handle backend validation errors and display them
       if (err.response && err.response.data) {
@@ -61,10 +61,10 @@ function Register() {
         <button type="submit">Register</button>
       </form>
 
-      {/* Display general message (e.g., success or error message) */}
+     
       {message && <p>{message}</p>}
 
-      {/* Add a Login link */}
+      {/* Login. Link */}
       <div className="login-option">
         <p>Already have an account? <a href="/login">Login here</a></p>
       </div>
