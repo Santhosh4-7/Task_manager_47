@@ -9,7 +9,6 @@ body {
   justify-content: center;
   height: 100vh;
 }
-
 /* Login Card Style */
 .login-container {
   background: white;
@@ -25,8 +24,7 @@ h2 {
   color: #2c3e50;
   margin-bottom: 18px;
 }
-
-/* Inputs */
+/*input*/
 input {
   width: 100%;
   padding: 10px;
@@ -81,7 +79,6 @@ p {
   color: #3498db;
   text-decoration: none;
 }
-
 .register-link a:hover {
   text-decoration: underline;
 }
