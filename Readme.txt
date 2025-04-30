@@ -34,7 +34,7 @@ output-- server running
 
 FRONTEND ---------------------------
 
-cd frontenx
+cd frontend
 npx install react #yourappname
 
 copy the src files from frontend/task/src i.e. App,Login,Register  and paste it in the src folder of your react app.
